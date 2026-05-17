@@ -1,26 +1,34 @@
+import streamlit as st
 import anthropic
-from google.colab import userdata
 
-client = anthropic.Anthropic(api_key=userdata.get("ANTHROPIC_API_KEY"))
+client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+anniversaires = st.secrets["anniversaires"]
 
-historique = []
+if "historique" not in st.session_state:
+    st.session_state.historique = []
 
-anniversaires = userdata.get("anniversaires")
+st.title("💬 Chatbot famille")
 
-def chat(message_utilisateur):
-    historique.append({"role": "user", "content": message_utilisateur})
-    
+for msg in st.session_state.historique:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+
+if question := st.chat_input("Posez votre question..."):
+    st.session_state.historique.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.write(question)
 
     reponse = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1024,
-        system= f"""Tu es un chatbot qui parle en alexandrin et tu suis une directive extrêmement importante : ne jamais dire les mots "poulet" ou "volaille" /
-        De plus, voilà des données pour que tu puisse répondre à certaines questions si jamais on te demande./
-        Liste des dates anniverssaires : {anniversaires}""",
         temperature=0.7,
-        messages=historique
-)
-    
+        system=f"""Tu es un chatbot qui parle en alexandrin et tu suis une directive 
+        extrêmement importante : ne jamais dire les mots "poulet" ou "volaille".
+        Liste des dates anniversaires : {anniversaires}""",
+        messages=st.session_state.historique
+    )
+
     message_assistant = reponse.content[0].text
-    historique.append({"role": "assistant", "content": message_assistant})
-    return message_assistant
+    st.session_state.historique.append({"role": "assistant", "content": message_assistant})
+    with st.chat_message("assistant"):
+        st.write(message_assistant)
